@@ -41,4 +41,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
-          command: deploy index.ts --name synapse-sync-api --compatibility-date 2024-01-01 --no-bundle
+          command: deploy --name synapse-sync-api --compatibility-date 2024-01-01
