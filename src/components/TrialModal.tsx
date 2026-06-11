@@ -27,6 +27,7 @@ export default function TrialModal({ isOpen, onClose, selectedPlan }: TrialModal
   const { user, completeOnboarding, updateWorkspaceName, updateBrandTone, connectPlatform } = useAuth();
   const [step, setStep] = useState<number>(1);
   const [brandName, setBrandName] = useState<string>('');
+  const [workEmail, setWorkEmail] = useState<string>('');
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['linkedin', 'x']);
   const [selectedTone, setSelectedTone] = useState<string>('growth');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -45,6 +46,7 @@ export default function TrialModal({ isOpen, onClose, selectedPlan }: TrialModal
     if (isOpen) {
       setStep(1);
       setBrandName('');
+      setWorkEmail('');
       setSelectedChannels(['linkedin', 'x']);
       setSelectedTone('growth');
       setIsLoading(false);
@@ -70,6 +72,19 @@ export default function TrialModal({ isOpen, onClose, selectedPlan }: TrialModal
   const handleNextStep = () => {
     if (step === 1) {
       if (!brandName.trim()) return;
+      // Fire-and-forget email collection to Captivation Hub
+      if (workEmail.trim()) {
+        const apiBase = import.meta.env.VITE_API_URL ?? '';
+        fetch(`${apiBase}/api/collect-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: workEmail.trim(),
+            firstName: brandName.trim(),
+            source: 'Trial Modal - Step 1',
+          }),
+        }).catch(() => {}); // silent fail — never block the user
+      }
       setStep(2);
     } else if (step === 2) {
       setStep(3);
@@ -239,6 +254,8 @@ export default function TrialModal({ isOpen, onClose, selectedPlan }: TrialModal
                     </label>
                     <input
                       type="email"
+                      value={workEmail}
+                      onChange={(e) => setWorkEmail(e.target.value)}
                       placeholder="e.g. name@acmeagency.com"
                       required
                       className="w-full p-3 bg-[#444444]/15 border border-[#444444]/60 rounded-xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#C9A84C]/45 focus:border-[#C9A84C] transition-all font-sans placeholder-[#888888] text-[#F7F3EC]"

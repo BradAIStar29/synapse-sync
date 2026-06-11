@@ -1,4 +1,5 @@
-import { Sparkles, Linkedin, Twitter, Mail, Youtube, ArrowUpRight } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, Linkedin, Twitter, Mail, Youtube, ArrowUpRight, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface FooterProps {
   onOpenLogin?: () => void;
@@ -11,6 +12,31 @@ export default function Footer({ onOpenLogin, onOpenSignup, onOpenLegal }: Foote
 
   const handleScrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const [footerEmail, setFooterEmail] = useState('');
+  const [footerStatus, setFooterStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  const handleFooterEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!footerEmail.trim() || footerStatus === 'loading') return;
+    setFooterStatus('loading');
+    try {
+      const apiBase = import.meta.env.VITE_API_URL ?? '';
+      const res = await fetch(`${apiBase}/api/collect-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: footerEmail.trim(), source: 'Footer Email Capture' }),
+      });
+      if (res.ok) {
+        setFooterStatus('success');
+        setFooterEmail('');
+      } else {
+        setFooterStatus('error');
+      }
+    } catch {
+      setFooterStatus('error');
+    }
   };
 
   return (
@@ -115,7 +141,43 @@ export default function Footer({ onOpenLogin, onOpenSignup, onOpenLegal }: Foote
 
       </div>
 
-      <div className="max-w-7xl mx-auto mt-16 pt-8 border-t border-[#444444]/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-[#888888] font-normal">
+      {/* Email Capture Bar */}
+      <div className="max-w-7xl mx-auto mt-16 pt-12 border-t border-[#444444]/60">
+        <div className="bg-[#444444]/10 border border-[#444444]/60 rounded-2xl px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <h4 className="font-display font-extrabold text-white text-base mb-1">Stay ahead of the algorithm.</h4>
+            <p className="text-xs text-[#888888]">Get early access tips, platform updates, and content strategies straight to your inbox.</p>
+          </div>
+          <form onSubmit={handleFooterEmailSubmit} className="flex items-center gap-2 w-full md:w-auto">
+            {footerStatus === 'success' ? (
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+                <CheckCircle2 className="w-4 h-4" />
+                You're in! Check your inbox.
+              </div>
+            ) : (
+              <>
+                <input
+                  type="email"
+                  value={footerEmail}
+                  onChange={(e) => setFooterEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                  className="flex-1 md:w-64 p-3 bg-[#0D1B2A] border border-[#444444] rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#C9A84C] focus:border-[#C9A84C] placeholder-[#888888] transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={footerStatus === 'loading'}
+                  className="inline-flex items-center gap-1.5 px-5 py-3 bg-[#C9A84C] hover:bg-[#C9A84C]/90 text-[#0D1B2A] font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  {footerStatus === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <><span>Subscribe</span><ArrowRight className="w-3.5 h-3.5" /></>}
+                </button>
+              </>
+            )}
+          </form>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-[#444444]/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-[#888888] font-normal">
         <span>© {currentYear} Synapse Sync Inc. All rights reserved.</span>
         <div className="flex gap-6">
           <span onClick={() => onOpenLegal && onOpenLegal('privacy')} className="hover:text-[#C9A84C] transition-colors cursor-pointer">Privacy Policy</span>
