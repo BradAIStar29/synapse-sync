@@ -42,3 +42,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
           command: deploy --name synapse-sync-api --compatibility-date 2024-01-01
+          secrets: |
+            CAPTIVATION_HUB_API_KEY
+        env:
+          CAPTIVATION_HUB_API_KEY: ${{ secrets.CAPTIVATION_HUB_API_KEY }}

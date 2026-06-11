@@ -8,6 +8,7 @@ export interface Env {
   STRIPE_SECRET_KEY: string;
   VITE_STRIPE_PUBLISHABLE_KEY: string;
   APP_URL: string;
+  CAPTIVATION_HUB_API_KEY: string;
 }
 
 const corsHeaders = {
@@ -35,6 +36,49 @@ export default {
     // GET /api/health
     if (url.pathname === "/api/health" && request.method === "GET") {
       return json({ status: "ok", timestamp: new Date().toISOString(), environment: "cloudflare-worker" });
+    }
+
+    // POST /api/collect-email
+    // Collects email (and optional name) from the website and creates a contact in Captivation Hub (GoHighLevel)
+    if (url.pathname === "/api/collect-email" && request.method === "POST") {
+      const body = await request.json() as any;
+      const { email, firstName, lastName, phone, source } = body;
+
+      if (!email) {
+        return json({ error: "Email is required" }, 400);
+      }
+
+      if (!env.CAPTIVATION_HUB_API_KEY) {
+        return json({ error: "Email collection not configured" }, 500);
+      }
+
+      const contactPayload: Record<string, any> = {
+        email: email.trim(),
+        source: source || "Synapse Sync Website",
+        tags: ["synapse-sync", "website-lead"],
+      };
+
+      if (firstName) contactPayload.firstName = firstName.trim();
+      if (lastName) contactPayload.lastName = lastName.trim();
+      if (phone) contactPayload.phone = phone.trim();
+
+      const ghlResponse = await fetch("https://rest.gohighlevel.com/v1/contacts/", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.CAPTIVATION_HUB_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contactPayload),
+      });
+
+      const ghlData = await ghlResponse.json() as any;
+
+      if (!ghlResponse.ok) {
+        console.error("Captivation Hub error:", JSON.stringify(ghlData));
+        return json({ error: "Failed to save contact", details: ghlData?.message || "Unknown error" }, 500);
+      }
+
+      return json({ success: true, contactId: ghlData?.contact?.id || null, message: "Email collected successfully" });
     }
 
     // GET /api/billing/config
