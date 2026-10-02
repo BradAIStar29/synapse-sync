@@ -164,6 +164,8 @@ export default {
             max_tokens: 600,
           });
           content = (result?.response || result?.text || "").toString().trim();
+          // LLMs sometimes wrap short posts in stray quotes — strip them
+          content = content.replace(/^["\']+/, "").replace(/["\']+$/, "").trim();
           if (content) {
             usedModel = model;
             break;
