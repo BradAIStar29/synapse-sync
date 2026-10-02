@@ -193,6 +193,74 @@ export default {
       );
     }
 
+    // ---------- POST /api/ai/blueprint ----------
+    // Digital asset blueprint generator (BMAIProductions site).
+    // Body: { idea } -> { ebook, course, newsletter, video, agent, monetization, plan }
+    if (url.pathname === "/api/ai/blueprint" && request.method === "POST") {
+      let body: any;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400, cors);
+      }
+
+      const idea = (body?.idea || "").toString().trim();
+      if (!idea) return json({ error: "An idea is required" }, 400, cors);
+      if (idea.length > 2000) return json({ error: "Idea is too long (max 2000 characters)" }, 400, cors);
+
+      if (!env.AI) {
+        return json({ error: "AI is not enabled on this worker", isFallback: true }, 503, cors);
+      }
+
+      const bpPrompt = [
+        "You are a digital product strategist. The user gives a topic, niche, or audience idea.",
+        "Return ONLY a valid JSON object (no markdown, no code fences) with exactly these keys:",
+        '"ebook", "course", "newsletter", "video", "agent", "monetization", "plan".',
+        "Each value is a short actionable paragraph (2-4 sentences) describing a concrete digital asset to build for that idea.",
+        '"plan" is a day-by-day 7-day build plan, one line per day, separated by newlines.',
+        "Be specific and practical: titles, module names, issue topics, video ideas.",
+        "",
+        `IDEA: ${idea}`,
+      ].join("\n");
+
+      const bpMessages = [
+        { role: "system", content: "You are a senior digital product strategist. You always respond with valid JSON only." },
+        { role: "user", content: bpPrompt },
+      ];
+
+      let rawContent = "";
+      for (const model of AI_MODELS) {
+        try {
+          const result: any = await env.AI.run(model, { messages: bpMessages, max_tokens: 1200 });
+          rawContent = (result?.response || result?.text || "").toString().trim();
+          if (rawContent) break;
+        } catch (err: any) {
+          console.error(`Workers AI blueprint error (${model}):`, err?.message || err);
+        }
+      }
+
+      if (!rawContent) {
+        return json({ error: "AI generation failed", isFallback: true }, 502, cors);
+      }
+
+      // Models sometimes wrap JSON in fences — strip before parsing
+      let cleaned = rawContent.replace(/^```(json)?\s*/i, "").replace(/```\s*$/, "").trim();
+      try {
+        const parsed = JSON.parse(cleaned);
+        const keys = ["ebook", "course", "newsletter", "video", "agent", "monetization", "plan"];
+        const out: Record<string, string> = {};
+        for (const k of keys) {
+          out[k] = typeof parsed[k] === "string" ? parsed[k].trim() : "";
+        }
+        if (!keys.some((k) => out[k])) {
+          return json({ error: "AI returned an unusable blueprint", isFallback: true }, 502, cors);
+        }
+        return json({ ...out, generatedBy: "cloudflare-workers-ai" }, 200, cors);
+      } catch {
+        return json({ error: "AI returned malformed JSON", isFallback: true }, 502, cors);
+      }
+    }
+
     // ---------- POST /api/collect-email ----------
     if (url.pathname === "/api/collect-email" && request.method === "POST") {
       let body: any;
