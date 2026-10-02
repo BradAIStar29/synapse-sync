@@ -228,37 +228,58 @@ export default {
         { role: "user", content: bpPrompt },
       ];
 
-      let rawContent = "";
-      for (const model of AI_MODELS) {
+      // Ask the model for JSON; one retry with a stricter reminder if malformed
+      let out: Record<string, string> | null = null;
+      for (let attempt = 0; attempt < 2 && !out; attempt++) {
+        const msgs = attempt === 0
+          ? bpMessages
+          : [
+              ...bpMessages,
+              { role: "assistant", content: "Sure, here is the JSON:" },
+              { role: "user", content: "That was not valid JSON. Respond with ONLY a JSON object, no other text, starting with { and ending with }." },
+            ];
+
+        let rawContent = "";
+        for (const model of AI_MODELS) {
+          try {
+            const inputs: Record<string, unknown> = { messages: msgs, max_tokens: 1200 };
+            if (attempt === 0) inputs.response_format = { type: "json_object" };
+            const result: any = await env.AI.run(model, inputs);
+            rawContent = (result?.response || result?.text || "").toString().trim();
+            if (rawContent) break;
+          } catch (err: any) {
+            console.error(`Workers AI blueprint error (${model}):`, err?.message || err);
+          }
+        }
+
+        if (!rawContent) break;
+
+        // Robust extraction: strip code fences, then grab outermost {...}
+        let cleaned = rawContent.replace(/```(json)?/gi, "").trim();
+        const firstBrace = cleaned.indexOf("{");
+        const lastBrace = cleaned.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+        }
         try {
-          const result: any = await env.AI.run(model, { messages: bpMessages, max_tokens: 1200 });
-          rawContent = (result?.response || result?.text || "").toString().trim();
-          if (rawContent) break;
-        } catch (err: any) {
-          console.error(`Workers AI blueprint error (${model}):`, err?.message || err);
+          const parsed = JSON.parse(cleaned);
+          const keys = ["ebook", "course", "newsletter", "video", "agent", "monetization", "plan"];
+          const candidate: Record<string, string> = {};
+          for (const k of keys) {
+            candidate[k] = typeof parsed[k] === "string" ? parsed[k].trim() : "";
+          }
+          if (keys.some((k) => candidate[k])) {
+            out = candidate;
+          }
+        } catch {
+          // retry with the stricter prompt
         }
       }
 
-      if (!rawContent) {
-        return json({ error: "AI generation failed", isFallback: true }, 502, cors);
-      }
-
-      // Models sometimes wrap JSON in fences — strip before parsing
-      let cleaned = rawContent.replace(/^```(json)?\s*/i, "").replace(/```\s*$/, "").trim();
-      try {
-        const parsed = JSON.parse(cleaned);
-        const keys = ["ebook", "course", "newsletter", "video", "agent", "monetization", "plan"];
-        const out: Record<string, string> = {};
-        for (const k of keys) {
-          out[k] = typeof parsed[k] === "string" ? parsed[k].trim() : "";
-        }
-        if (!keys.some((k) => out[k])) {
-          return json({ error: "AI returned an unusable blueprint", isFallback: true }, 502, cors);
-        }
-        return json({ ...out, generatedBy: "cloudflare-workers-ai" }, 200, cors);
-      } catch {
+      if (!out) {
         return json({ error: "AI returned malformed JSON", isFallback: true }, 502, cors);
       }
+      return json({ ...out, generatedBy: "cloudflare-workers-ai" }, 200, cors);
     }
 
     // ---------- POST /api/collect-email ----------
