@@ -107,30 +107,29 @@ export class BmaiConsultantAgent extends Agent<Env, ConsultantState> {
       .slice(-(MAX_HISTORY + 2));
     this.setState({ messages: updated });
 
-    // 4. Opportunistic lead capture: if the user shared an email, push it to the CRM
+    // 4. Opportunistic lead capture: if the user shared an email, store it in the Lead Vault
     let emailCaptured = false;
-    if (!this.state.emailCaptured && this.env.CAPTIVATION_HUB_API_KEY) {
+    if (!this.state.emailCaptured) {
       const emails = message.match(EMAIL_RE);
       if (emails && emails.length) {
         const email = emails[0].toLowerCase();
         try {
-          const ghlRes = await fetch("https://rest.gohighlevel.com/v1/contacts/", {
+          const vaultId = this.env.LeadVault.idFromName("global");
+          const vault = this.env.LeadVault.get(vaultId);
+          const vaultRes = await vault.fetch("https://lead-vault/store", {
             method: "POST",
-            headers: {
-              Authorization: `Bearer ${this.env.CAPTIVATION_HUB_API_KEY}`,
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
               source: "BMAI AI Consultant Chat",
               tags: ["synapse-sync", "website-lead", "ai-chat-lead"],
             }),
           });
-          if (ghlRes.ok) {
+          if (vaultRes.ok) {
             emailCaptured = true;
             this.setState({ ...this.state, emailCaptured: true });
           }
-          console.log(`Consultant lead capture (${email}):`, ghlRes.status);
+          console.log(`Consultant lead capture (${email}):`, vaultRes.status);
         } catch (err: any) {
           console.error("Consultant lead capture failed:", err?.message || err);
         }

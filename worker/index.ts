@@ -8,9 +8,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { agentsMiddleware } from "hono-agents";
 import { AI_MODELS, BmaiConsultantAgent } from "./consultant";
+import { LeadVault } from "./leads";
 
-// The agent class must be exported from the worker entry for the DO migration
-export { BmaiConsultantAgent };
+// Agent classes must be exported from the worker entry for the DO migrations
+export { BmaiConsultantAgent, LeadVault };
 
 // Minimal type for the Cloudflare Workers AI binding
 interface Ai {
@@ -21,9 +22,10 @@ export interface Env {
   STRIPE_SECRET_KEY: string;
   VITE_STRIPE_PUBLISHABLE_KEY: string;
   APP_URL: string;
-  CAPTIVATION_HUB_API_KEY: string;
+  LEAD_ADMIN_KEY: string; // protects GET/DELETE on the lead vault
   AI: Ai; // Cloudflare Workers AI binding
   BmaiConsultantAgent: DurableObjectNamespace; // Cloudflare Agents SDK binding
+  LeadVault: DurableObjectNamespace; // self-hosted lead storage
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -296,46 +298,45 @@ app.post("/api/collect-email", async (c) => {
     return c.json({ error: "Please provide a valid email address" }, 400);
   }
 
-  if (!c.env.CAPTIVATION_HUB_API_KEY) {
-    return c.json({ error: "Email collection not configured" }, 500);
-  }
-
-  const contactPayload: Record<string, any> = {
-    email,
-    source: (body?.source || "Synapse Sync Website").toString().slice(0, 200),
-    tags: ["synapse-sync", "website-lead"],
-  };
-  if (body?.firstName) contactPayload.firstName = body.firstName.toString().trim().slice(0, 100);
-  if (body?.lastName) contactPayload.lastName = body.lastName.toString().trim().slice(0, 100);
-  if (body?.phone) contactPayload.phone = body.phone.toString().trim().slice(0, 30);
-
+  // Store the lead in the self-hosted Lead Vault (Durable Object)
   try {
-    const ghlResponse = await fetch("https://rest.gohighlevel.com/v1/contacts/", {
+    const vaultId = c.env.LeadVault.idFromName("global");
+    const vault = c.env.LeadVault.get(vaultId);
+    const vaultRes = await vault.fetch("https://lead-vault/store", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${c.env.CAPTIVATION_HUB_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(contactPayload),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        source: (body?.source || "Synapse Sync Website").toString().slice(0, 200),
+        tags: ["synapse-sync", "website-lead"],
+        firstName: body?.firstName,
+        lastName: body?.lastName,
+        phone: body?.phone,
+      }),
     });
-
-    const ghlData: any = await ghlResponse.json().catch(() => ({}));
-
-    if (!ghlResponse.ok) {
-      console.error("Captivation Hub error:", ghlResponse.status, JSON.stringify(ghlData));
-      return c.json({
-        error: "Failed to save contact",
-        details: ghlData?.message || "Unknown error",
-        ghlStatus: ghlResponse.status,
-        ghlBody: JSON.stringify(ghlData).slice(0, 300),
-      }, 500);
+    const vaultData: any = await vaultRes.json().catch(() => ({}));
+    if (!vaultRes.ok) {
+      return c.json({ error: vaultData?.error || "Failed to save contact" }, 500);
     }
-
-    return c.json({ success: true, contactId: ghlData?.contact?.id || null, message: "Email collected successfully" });
+    return c.json({ success: true, message: "Email collected successfully", totalLeads: vaultData?.totalLeads ?? null });
   } catch (err: any) {
-    console.error("Captivation Hub request failed:", err?.message || err);
+    console.error("Lead vault write failed:", err?.message || err);
     return c.json({ error: "Failed to save contact" }, 500);
   }
+});
+
+// GET /api/leads — export captured leads (requires X-Admin-Key header)
+app.get("/api/leads", async (c) => {
+  const adminKey = c.env.LEAD_ADMIN_KEY;
+  const provided = c.req.header("X-Admin-Key") || c.req.query("key");
+  if (!adminKey || provided !== adminKey) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const vaultId = c.env.LeadVault.idFromName("global");
+  const vault = c.env.LeadVault.get(vaultId);
+  const res = await vault.fetch("https://lead-vault/read?key=" + encodeURIComponent(provided || ""));
+  const data = await res.json().catch(() => ({ error: "Failed to read leads" }));
+  return c.json(data, res.status as any);
 });
 
 // GET /api/billing/config

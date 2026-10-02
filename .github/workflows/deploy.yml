@@ -47,7 +47,5 @@ jobs:
           workingDirectory: worker
           wranglerVersion: "4"
           command: deploy
-          secrets: |
-            CAPTIVATION_HUB_API_KEY
         env:
           CAPTIVATION_HUB_API_KEY: ${{ secrets.CAPTIVATION_HUB_API_KEY }}

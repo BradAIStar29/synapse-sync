@@ -5,13 +5,21 @@ compatibility_flags = ["nodejs_compat"]
 
 # BMAI Asset Consultant (Cloudflare Agents SDK) — stateful DO per visitor session
 [durable_objects]
-bindings = [{ name = "BmaiConsultantAgent", class_name = "BmaiConsultantAgent" }]
+bindings = [
+  { name = "BmaiConsultantAgent", class_name = "BmaiConsultantAgent" },
+  { name = "LeadVault", class_name = "LeadVault" },
+]
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["BmaiConsultantAgent"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["LeadVault"]
+
 [vars]
+LEAD_ADMIN_KEY = "c974b11ded72de22d0d71db7c88b27194fbc168cf60e2533"
 APP_URL = "https://bmai-synapse-sync.pages.dev"
 
 # Cloudflare Workers AI binding — enables real AI content generation
@@ -21,4 +29,3 @@ binding = "AI"
 # Secrets (set via: wrangler secret put STRIPE_SECRET_KEY)
 # STRIPE_SECRET_KEY
 # VITE_STRIPE_PUBLISHABLE_KEY
-# CAPTIVATION_HUB_API_KEY
