@@ -226,7 +226,7 @@ app.post("/api/ai/blueprint", async (c) => {
     let rawContent = "";
     for (const model of AI_MODELS) {
       try {
-        const result: any = await c.env.AI.run(model, { messages: msgs, max_tokens: 1200 });
+        const result: any = await c.env.AI.run(model, { messages: msgs, max_tokens: 2000 });
         rawContent = (result?.response || result?.text || "").toString().trim();
         if (rawContent) break;
       } catch (err: any) {
@@ -244,18 +244,35 @@ app.post("/api/ai/blueprint", async (c) => {
     if (firstBrace !== -1 && lastBrace > firstBrace) {
       cleaned = cleaned.slice(firstBrace, lastBrace + 1);
     }
+
+    const keys = ["ebook", "course", "newsletter", "video", "agent", "monetization", "plan"];
+    const candidate: Record<string, string> = {};
+
+    // Fast path: full JSON parse
     try {
       const parsed = JSON.parse(cleaned);
-      const keys = ["ebook", "course", "newsletter", "video", "agent", "monetization", "plan"];
-      const candidate: Record<string, string> = {};
       for (const k of keys) {
         candidate[k] = typeof parsed[k] === "string" ? parsed[k].trim() : "";
       }
-      if (keys.some((k) => candidate[k])) {
-        out = candidate;
-      }
     } catch {
-      // retry with the stricter prompt
+      // Salvage path: output was truncated mid-JSON. Recover each
+      // complete key/value pair individually with a regex that only
+      // matches properly closed JSON strings.
+      for (const k of keys) {
+        const m = cleaned.match(new RegExp(`"${k}"\s*:\s*("(?:[^"\\]|\\.)*")`));
+        if (m) {
+          try {
+            const val = JSON.parse(m[1]);
+            if (typeof val === "string" && val.trim()) candidate[k] = val.trim();
+          } catch { /* skip this key */ }
+        }
+      }
+    }
+
+    // Accept if we recovered at least the core asset sections
+    const required = ["ebook", "course", "newsletter"];
+    if (required.every((k) => candidate[k])) {
+      out = candidate;
     }
   }
 
