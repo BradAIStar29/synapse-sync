@@ -17,8 +17,12 @@ export interface Env {
   AI: Ai; // Cloudflare Workers AI binding
 }
 
-// Workers AI model — fast, cheap, good at short-form marketing copy
-const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// Workers AI models — tried in order; if one is retired/unavailable the next runs
+const AI_MODELS = [
+  "@cf/meta/llama-3.1-8b-instruct-fp8", // fast, cheap, good at short-form marketing copy
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast", // higher quality fallback
+  "@cf/meta/llama-3.2-3b-instruct", // lightweight last resort
+];
 
 const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -145,35 +149,46 @@ export default {
         return json({ error: "AI is not enabled on this worker", isFallback: true }, 503, cors);
       }
 
-      try {
-        const result: any = await env.AI.run(AI_MODEL, {
-          messages: [
-            { role: "system", content: "You are a senior social media copywriter. You write clean, high-performing posts. Output only the requested copy." },
-            { role: "user", content: buildPrompt(idea, platform, tone) },
-          ],
-          max_tokens: 600,
-        });
+      const messages = [
+        { role: "system", content: "You are a senior social media copywriter. You write clean, high-performing posts. Output only the requested copy." },
+        { role: "user", content: buildPrompt(idea, platform, tone) },
+      ];
 
-        const content = (result?.response || "").toString().trim();
-        if (!content) {
-          return json({ error: "AI returned an empty response", isFallback: true }, 502, cors);
+      let content = "";
+      let usedModel = "";
+
+      for (const model of AI_MODELS) {
+        try {
+          const result: any = await env.AI.run(model, {
+            messages,
+            max_tokens: 600,
+          });
+          content = (result?.response || result?.text || "").toString().trim();
+          if (content) {
+            usedModel = model;
+            break;
+          }
+        } catch (err: any) {
+          console.error(`Workers AI error (${model}):`, err?.message || err);
+          // try the next model in the chain
         }
-
-        return json(
-          {
-            content,
-            platform,
-            tone,
-            generatedBy: "cloudflare-workers-ai",
-            model: AI_MODEL,
-          },
-          200,
-          cors
-        );
-      } catch (err: any) {
-        console.error("Workers AI error:", err?.message || err);
-        return json({ error: "AI generation failed", isFallback: true }, 500, cors);
       }
+
+      if (!content) {
+        return json({ error: "AI generation failed", isFallback: true }, 502, cors);
+      }
+
+      return json(
+        {
+          content,
+          platform,
+          tone,
+          generatedBy: "cloudflare-workers-ai",
+          model: usedModel,
+        },
+        200,
+        cors
+      );
     }
 
     // ---------- POST /api/collect-email ----------
