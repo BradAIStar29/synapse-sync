@@ -95,6 +95,80 @@ function buildPrompt(idea: string, platform: string, tone: string): string {
 
 // ---------- Routes ----------
 
+
+// POST /api/ai/blueprint-stream
+// Streaming variant of the blueprint generator (NOVA site). Streams raw model
+// tokens as SSE; the client progressively fills the asset fields as they arrive.
+// Body: { idea } -> text/event-stream of Workers AI chunks
+app.post("/api/ai/blueprint-stream", async (c) => {
+  let body: any;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const idea = (body?.idea || "").toString().trim();
+  if (!idea) return c.json({ error: "An idea is required" }, 400);
+  if (idea.length > 2000) return c.json({ error: "Idea is too long (max 2000 characters)" }, 400);
+
+  if (!c.env.AI) {
+    return c.json({ error: "AI is not enabled on this worker", isFallback: true }, 503);
+  }
+
+  const bpPrompt = [
+    "You are a digital product strategist. The user gives a topic, niche, or audience idea.",
+    "Return ONLY a valid JSON object (no markdown, no code fences) with exactly these keys:",
+    '"ebook", "course", "newsletter", "video", "agent", "monetization", "plan".',
+    "Each value is a short actionable paragraph (2-4 sentences) describing a concrete digital asset to build for that idea.",
+    '"plan" is a day-by-day 7-day build plan, one line per day, separated by newlines.',
+    "Be specific and practical: titles, module names, issue topics, video ideas.",
+    "",
+    `IDEA: ${idea}`,
+  ].join("\n");
+
+  const bpMessages = [
+    { role: "system", content: "You are a senior digital product strategist. You always respond with valid JSON only." },
+    { role: "user", content: bpPrompt },
+  ];
+
+  // Try models in order until one starts streaming
+  let upstream: ReadableStream | null = null;
+  let usedModel = "";
+  for (const model of AI_MODELS) {
+    try {
+      const result: any = await c.env.AI.run(model, {
+        messages: bpMessages,
+        max_tokens: 2000,
+        stream: true,
+      });
+      // Workers AI returns a ReadableStream when stream: true
+      if (result && typeof (result as any).getReader === "function") {
+        upstream = result as ReadableStream;
+        usedModel = model;
+        break;
+      }
+      // Some model versions ignore stream — treat non-stream result as failure here
+      console.error(`blueprint-stream: ${model} returned non-stream result`);
+    } catch (err: any) {
+      console.error(`blueprint-stream error (${model}):`, err?.message || err);
+    }
+  }
+
+  if (!upstream) {
+    return c.json({ error: "AI generation failed", isFallback: true }, 502);
+  }
+
+  console.log(`blueprint-stream serving ${usedModel}`);
+  return new Response(upstream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  });
+});
+
 // GET /api/health
 app.get("/api/health", (c) => {
   return c.json({
