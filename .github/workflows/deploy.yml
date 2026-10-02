@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -45,7 +45,8 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
-          command: deploy --name synapse-sync-api --compatibility-date 2024-01-01
+          wranglerVersion: "4"
+          command: deploy
           secrets: |
             CAPTIVATION_HUB_API_KEY
         env:

@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "hono": "^4.6.0"
+    "agents": "^0.24.0",
+    "hono": "^4.6.0",
+    "hono-agents": "^3.0.12",
+    "pkce-challenge": "^6.0.0"
   }
 }

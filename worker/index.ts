@@ -6,6 +6,11 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { agentsMiddleware } from "hono-agents";
+import { AI_MODELS, BmaiConsultantAgent } from "./consultant";
+
+// The agent class must be exported from the worker entry for the DO migration
+export { BmaiConsultantAgent };
 
 // Minimal type for the Cloudflare Workers AI binding
 interface Ai {
@@ -18,14 +23,8 @@ export interface Env {
   APP_URL: string;
   CAPTIVATION_HUB_API_KEY: string;
   AI: Ai; // Cloudflare Workers AI binding
+  BmaiConsultantAgent: DurableObjectNamespace; // Cloudflare Agents SDK binding
 }
-
-// Workers AI models — tried in order; if one is retired/unavailable the next runs
-const AI_MODELS = [
-  "@cf/meta/llama-3.1-8b-instruct-fp8", // fast, cheap, good at short-form marketing copy
-  "@cf/meta/llama-3.3-70b-instruct-fp8-fast", // higher quality fallback
-  "@cf/meta/llama-3.2-3b-instruct", // lightweight last resort
-];
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -414,6 +413,25 @@ app.post("/api/billing/create-checkout-session", async (c) => {
     return c.json({ error: "Failed to create checkout session", isMockFallback: true }, 500);
   }
 });
+
+// ---------- Cloudflare Agents (BMAI Asset Consultant) ----------
+// Same CORS policy as /api/* — production app URL + any pages.dev deployment
+app.use(
+  "/agents/*",
+  cors({
+    origin: (origin, c) => {
+      const appUrl = c.env?.APP_URL || "";
+      if (origin && (origin === appUrl || (origin.endsWith(".pages.dev") && origin.startsWith("https://")))) {
+        return origin;
+      }
+      return appUrl || null;
+    },
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowHeaders: ["Content-Type"],
+    maxAge: 86400,
+  })
+);
+app.use("*", agentsMiddleware());
 
 // 404 for everything else
 app.notFound((c) => c.json({ error: "Not found" }, 404));
