@@ -230,21 +230,20 @@ export default {
 
       // Ask the model for JSON; one retry with a stricter reminder if malformed
       let out: Record<string, string> | null = null;
+      let debugRaw = "";
       for (let attempt = 0; attempt < 2 && !out; attempt++) {
         const msgs = attempt === 0
           ? bpMessages
           : [
               ...bpMessages,
               { role: "assistant", content: "Sure, here is the JSON:" },
-              { role: "user", content: "That was not valid JSON. Respond with ONLY a JSON object, no other text, starting with { and ending with }." },
+              { role: "user", content: "That was not valid JSON. Respond with ONLY a JSON object, no other text, no markdown, starting with { and ending with }." },
             ];
 
         let rawContent = "";
         for (const model of AI_MODELS) {
           try {
-            const inputs: Record<string, unknown> = { messages: msgs, max_tokens: 1200 };
-            if (attempt === 0) inputs.response_format = { type: "json_object" };
-            const result: any = await env.AI.run(model, inputs);
+            const result: any = await env.AI.run(model, { messages: msgs, max_tokens: 1200 });
             rawContent = (result?.response || result?.text || "").toString().trim();
             if (rawContent) break;
           } catch (err: any) {
@@ -252,7 +251,8 @@ export default {
           }
         }
 
-        if (!rawContent) break;
+        if (!rawContent) continue;
+        debugRaw = rawContent;
 
         // Robust extraction: strip code fences, then grab outermost {...}
         let cleaned = rawContent.replace(/```(json)?/gi, "").trim();
@@ -277,7 +277,7 @@ export default {
       }
 
       if (!out) {
-        return json({ error: "AI returned malformed JSON", isFallback: true }, 502, cors);
+        return json({ error: "AI returned malformed JSON", isFallback: true, debugRaw: debugRaw.slice(0, 500) }, 502, cors);
       }
       return json({ ...out, generatedBy: "cloudflare-workers-ai" }, 200, cors);
     }
