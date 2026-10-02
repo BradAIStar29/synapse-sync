@@ -16,6 +16,7 @@ import {
   Check
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { collectEmail, createCheckoutSession } from '../api';
 
 interface TrialModalProps {
   isOpen: boolean;
@@ -74,16 +75,10 @@ export default function TrialModal({ isOpen, onClose, selectedPlan }: TrialModal
       if (!brandName.trim()) return;
       // Fire-and-forget email collection to Captivation Hub
       if (workEmail.trim()) {
-        const apiBase = import.meta.env.VITE_API_URL ?? '';
-        fetch(`${apiBase}/api/collect-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: workEmail.trim(),
-            firstName: brandName.trim(),
-            source: 'Trial Modal - Step 1',
-          }),
-        }).catch(() => {}); // silent fail — never block the user
+        collectEmail(workEmail.trim(), {
+          firstName: brandName.trim(),
+          source: 'Trial Modal - Step 1',
+        }); // silent fail — never blocks the user
       }
       setStep(2);
     } else if (step === 2) {
@@ -102,23 +97,19 @@ export default function TrialModal({ isOpen, onClose, selectedPlan }: TrialModal
     }
     setPaymentError('');
     setIsLoading(true);
-    setLoadingText("Contacting secure PCI-compliant gateway endpoints...");
+    setLoadingText("Preparing your checkout...");
 
     try {
-      const apiBase = import.meta.env.VITE_API_URL ?? '';
-      const response = await fetch(`${apiBase}/api/billing/create-checkout-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          planName: selectedPlan,
-          email: user?.email || "customer@example.com",
-          brandName: brandName,
-          selectedTone: selectedTone,
-          connectedChannels: selectedChannels,
-        }),
+      const result = await createCheckoutSession({
+        planName: selectedPlan,
+        email: user?.email || "customer@example.com",
+        brandName: brandName,
+        selectedTone: selectedTone,
+        connectedChannels: selectedChannels,
       });
 
-      const data = await response.json();
+      const response = { ok: result.ok, status: result.status };
+      const data = result.data;
 
       if (!response.ok) {
         throw new Error(data.error || "Failed secure billing session negotiation.");
@@ -126,7 +117,7 @@ export default function TrialModal({ isOpen, onClose, selectedPlan }: TrialModal
 
       // If keys are provided, route to real checkout
       if (!data.isMock && data.redirectUrl) {
-        setLoadingText("Gateway response: SECURELY AUTHORIZED! Connecting to checkout portal...");
+        setLoadingText("Checkout ready! Redirecting to secure payment...");
         setTimeout(() => {
           window.location.href = data.redirectUrl;
         }, 1000);
@@ -135,12 +126,12 @@ export default function TrialModal({ isOpen, onClose, selectedPlan }: TrialModal
 
       // Proceed with simulated interactive verification sequence
       const progressText = [
-        "Contacting secure PCI-compliant gateway endpoints...",
-        "Validating credit card credentials pre-authorization...",
-        "Authorizing $0.00 zero-risk trial capture loop...",
-        "Establishing algorithm-friendly webhooks & channels under Synapse Sync...",
-        "Securing 14-day subscription token...",
-        "Gateway response: AUTHORIZED successfully! Launching co-pilot..."
+        "Setting up your free trial...",
+        "Verifying your details...",
+        "Activating your 14-day trial ($0 today)...",
+        "Connecting your selected channels...",
+        "Preparing your workspace...",
+        "All set! Launching your workspace..."
       ];
 
       let index = 0;

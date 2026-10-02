@@ -41,6 +41,7 @@ import { useAuth } from '../context/AuthContext';
 import { PRELOADED_DRAFTS, CHANNEL_METADATA, generatePlatformOptimization } from '../templates';
 import { ChannelOptimizationMap } from '../types';
 import AssetLibraryAndRepurposer from './AssetLibraryAndRepurposer';
+import { generateWithAI } from '../api';
 
 export default function DashboardWorkspace() {
   const { user, logOut, connectPlatform, disconnectPlatform, updateBrandTone, updateWorkspaceName } = useAuth();
@@ -489,6 +490,11 @@ export default function DashboardWorkspace() {
   }, [user?.connectedPlatforms, activeResultTab]);
 
   const handleTemplateSelect = (id: string) => {
+    // Don't silently wipe a custom draft the user was writing
+    if (selectedTemplate === 'custom' && customText.trim() && PRELOADED_DRAFTS.every(d => d.text !== customText.trim())) {
+      const confirmed = window.confirm("Replace your current draft with this template? Your unsaved text will be lost.");
+      if (!confirmed) return;
+    }
     setSelectedTemplate(id);
     const doc = PRELOADED_DRAFTS.find(d => d.id === id);
     if (doc) {
@@ -503,43 +509,59 @@ export default function DashboardWorkspace() {
     setOptimizedOutputs(null);
   };
 
-  // Run simulated optimization
-  const runOptimization = () => {
-    if (!customText.trim() || !user) return;
+  // Run optimization: real server AI first, local templates as fallback
+  const runOptimization = async () => {
+    if (!customText.trim() || !user || isProcessing) return;
+    const targets = user.connectedPlatforms.length > 0 ? user.connectedPlatforms : ['linkedin'];
     setIsProcessing(true);
     setOptimizedOutputs(null);
 
     const steps = [
-      "Securing algorithm credentials...",
-      "Extracting hooks tailored to platform rules...",
-      "Analyzing tone scores & reach contours...",
-      "Injecting optimal formatting and hashtags...",
-      "Compiling optimized multichannel campaign copy board..."
+      "Reading your draft...",
+      "Crafting platform-specific hooks...",
+      "Tuning tone and readability...",
+      "Formatting your campaign..."
     ];
-
     let currentStepIndex = 0;
     setProcessingStep(steps[currentStepIndex]);
+    const stepper = setInterval(() => {
+      currentStepIndex = (currentStepIndex + 1) % steps.length;
+      setProcessingStep(steps[currentStepIndex]);
+    }, 700);
 
-    const interval = setInterval(() => {
-      currentStepIndex++;
-      if (currentStepIndex < steps.length) {
-        setProcessingStep(steps[currentStepIndex]);
-      } else {
-        clearInterval(interval);
-        
-        const results: ChannelOptimizationMap = {};
-        const targets = user.connectedPlatforms.length > 0 ? user.connectedPlatforms : ['linkedin'];
-        targets.forEach(chan => {
-          results[chan] = generatePlatformOptimization(customText, chan);
-        });
+    try {
+      const aiResults = await Promise.all(
+        targets.map(async (chan) => {
+          const res = await generateWithAI(customText, chan, user.brandTone || 'growth');
+          return { chan, ok: res.ok && !!res.data.content, content: res.data.content as string };
+        })
+      );
 
-        setOptimizedOutputs(results);
-        setIsProcessing(false);
-        if (targets.length > 0) {
-          setActiveResultTab(targets[0]);
+      const results: ChannelOptimizationMap = {};
+      targets.forEach((chan, i) => {
+        const base = generatePlatformOptimization(customText, chan);
+        const ai = aiResults[i];
+        if (ai && ai.ok && ai.content) {
+          results[chan] = { ...base, content: ai.content };
+        } else {
+          results[chan] = base;
         }
+      });
+
+      setOptimizedOutputs(results);
+    } catch {
+      const results: ChannelOptimizationMap = {};
+      targets.forEach(chan => {
+        results[chan] = generatePlatformOptimization(customText, chan);
+      });
+      setOptimizedOutputs(results);
+    } finally {
+      clearInterval(stepper);
+      setIsProcessing(false);
+      if (targets.length > 0) {
+        setActiveResultTab(targets[0]);
       }
-    }, 300);
+    }
   };
 
   const handleSaveCampaign = () => {

@@ -5,6 +5,11 @@ compatibility_date = "2024-01-01"
 [vars]
 APP_URL = "https://bmai-synapse-sync.pages.dev"
 
+# Cloudflare Workers AI binding — enables real AI content generation
+[ai]
+binding = "AI"
+
 # Secrets (set via: wrangler secret put STRIPE_SECRET_KEY)
 # STRIPE_SECRET_KEY
 # VITE_STRIPE_PUBLISHABLE_KEY
+# CAPTIVATION_HUB_API_KEY

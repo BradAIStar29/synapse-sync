@@ -12,6 +12,7 @@ interface AuthContextType {
   user: UserSession | null;
   isLoading: boolean;
   error: string | null;
+  clearError: () => void;
   signUp: (email: string, password: string, workspaceName: string) => Promise<boolean>;
   logIn: (email: string, password: string) => Promise<boolean>;
   logOut: () => void;
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const clearError = () => setError(null);
 
   useEffect(() => {
     // Bootstrap users DB in localStorage if it doesn't exist
@@ -243,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       error,
+      clearError,
       signUp,
       logIn,
       logOut,

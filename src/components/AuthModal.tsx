@@ -9,7 +9,7 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose, initialTab = 'login' }: AuthModalProps) {
-  const { signUp, logIn, error: authError } = useAuth();
+  const { signUp, logIn, error: authError, clearError } = useAuth();
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>(initialTab);
   
   // Fields
@@ -63,6 +63,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = 'login' }: Aut
   };
 
   const handleQuickLogin = async (demoEmail: string) => {
+    if (isSubmitting) return;
     setEmail(demoEmail);
     setPassword('password123');
     setLocalError(null);
@@ -107,6 +108,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = 'login' }: Aut
             onClick={() => {
               setActiveTab('login');
               setLocalError(null);
+              clearError();
             }}
             className={`py-2 rounded-lg text-xs uppercase tracking-wider font-semibold transition-all ${
               activeTab === 'login'
@@ -120,6 +122,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = 'login' }: Aut
             onClick={() => {
               setActiveTab('signup');
               setLocalError(null);
+              clearError();
             }}
             className={`py-2 rounded-lg text-xs uppercase tracking-wider font-semibold transition-all ${
               activeTab === 'signup'
@@ -132,7 +135,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = 'login' }: Aut
         </div>
 
         <h3 className="font-display text-2xl font-bold text-white mb-2 tracking-tight">
-          {activeTab === 'login' ? 'Welcome Back, Operator' : 'Establish Co-Pilot Hub'}
+          {activeTab === 'login' ? 'Welcome back' : 'Create your account'}
         </h3>
         <p className="text-[#888888] text-xs leading-relaxed mb-6">
           {activeTab === 'login' 
@@ -228,19 +231,21 @@ export default function AuthModal({ isOpen, onClose, initialTab = 'login' }: Aut
         {/* Quick Demo Credentials for Fast Client Exploration */}
         <div className="mt-6 pt-5 border-t border-[#444444]/50 text-center">
           <span className="text-[9px] uppercase tracking-wider text-[#888888] block mb-2.5 font-bold">
-            ⚡ Quick Demo Portals (Fast Connection)
+            Try the demo (no signup needed)
           </span>
           <div className="grid grid-cols-2 gap-2 text-[10px]">
             <button
               onClick={() => handleQuickLogin('agency@synapse.com')}
-              className="py-1.5 px-2 bg-[#444444]/20 hover:bg-[#444444]/40 border border-[#444444]/60 rounded-lg text-left transition-all truncate text-[#F7F3EC] cursor-pointer group"
+              disabled={isSubmitting}
+              className="py-1.5 px-2 bg-[#444444]/20 hover:bg-[#444444]/40 border border-[#444444]/60 rounded-lg text-left transition-all truncate text-[#F7F3EC] cursor-pointer group disabled:opacity-50 disabled:cursor-wait"
             >
               <span className="block font-semibold group-hover:text-[#C9A84C]">Acme Agency</span>
               <span className="text-[#888888] text-[9px]">agency@synapse.com</span>
             </button>
             <button
               onClick={() => handleQuickLogin('creator@synapse.com')}
-              className="py-1.5 px-2 bg-[#444444]/20 hover:bg-[#444444]/40 border border-[#444444]/60 rounded-lg text-left transition-all truncate text-[#F7F3EC] cursor-pointer group"
+              disabled={isSubmitting}
+              className="py-1.5 px-2 bg-[#444444]/20 hover:bg-[#444444]/40 border border-[#444444]/60 rounded-lg text-left transition-all truncate text-[#F7F3EC] cursor-pointer group disabled:opacity-50 disabled:cursor-wait"
             >
               <span className="block font-semibold group-hover:text-[#C9A84C]">Creator Lab</span>
               <span className="text-[#888888] text-[9px]">creator@synapse.com</span>
@@ -251,7 +256,7 @@ export default function AuthModal({ isOpen, onClose, initialTab = 'login' }: Aut
         {/* Security assurance */}
         <div className="mt-5 flex items-center justify-center gap-1 text-[9px] text-[#888888]">
           <ShieldCheck className="w-3.5 h-3.5 text-[#C9A84C]" />
-          <span>Locked Protection. Simulated TLS-encrypted connection.</span>
+          <span>Demo accounts — for trying the dashboard. Sign up to save your work.</span>
         </div>
 
       </div>

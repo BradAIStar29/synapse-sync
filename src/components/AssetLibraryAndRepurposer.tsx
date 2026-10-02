@@ -42,6 +42,7 @@ import {
   Palette
 } from 'lucide-react';
 import { CHANNEL_METADATA, generatePlatformOptimization } from '../templates';
+import { generateWithAI } from '../api';
 
 // TS Interfaces
 export interface Asset {
@@ -349,18 +350,42 @@ export default function AssetLibraryAndRepurposer({
     setRepurposedResult(null);
   };
 
-  // Perform Simulated AI Content Repurposing based on channel/audience
-  const handleRunRepurposer = () => {
+  // AI content repurposing: real server AI first, local templates as fallback
+  const handleRunRepurposer = async () => {
     if (!repurposeSourceText.trim()) {
-      alert('Please specify some source content to repurpose first!');
+      alert('Please add some source content to repurpose first.');
       return;
     }
+    if (isRepurposing) return;
 
     setIsRepurposing(true);
     setRepurposedResult(null);
 
-    // Simulate multi-platform rewrite delays
-    setTimeout(() => {
+    // Try real AI generation for this platform + audience
+    const audienceBrief: { [key: string]: string } = {
+      'saas-founders': 'Optimize for SaaS founders: metrics, leverage, growth loops, MRR vocabulary.',
+      'c-level': 'Optimize for C-level executives: authoritative, professional, risk and efficiency framing.',
+      'freelancers': 'Optimize for agencies and freelancers: client value, margins, portfolio framing.',
+      'smb-owners': 'Optimize for small business owners: plain language, time saved, local growth.',
+      'gen-consumers': 'Optimize for general consumers: friendly, relatable, benefit-forward.'
+    };
+    let aiContent: string | null = null;
+    try {
+      const brief = audienceBrief[targetAudience] || audienceBrief['gen-consumers'];
+      const res = await generateWithAI(
+        `${repurposeSourceText}\n\nAdditional instruction: ${brief}`,
+        targetPlatform,
+        'growth'
+      );
+      if (res.ok && res.data.content) {
+        aiContent = res.data.content;
+      }
+    } catch {
+      // fall through to local generation
+    }
+
+    // Local generation: base metadata, and the copy when AI is unavailable
+    {
       const optimization = generatePlatformOptimization(repurposeSourceText, targetPlatform);
       
       const audienceNames: { [key: string]: string } = {
@@ -414,7 +439,7 @@ export default function AssetLibraryAndRepurposer({
       }
 
       setRepurposedResult({
-        adaptedText: adaptedContent,
+        adaptedText: aiContent || adaptedContent,
         insights: targetInsights,
         predictedReachScore: Math.floor(optimization.reachMultiplier * 100),
         multiplier: optimization.reachMultiplier,
@@ -425,9 +450,9 @@ export default function AssetLibraryAndRepurposer({
         platformLabel: CHANNEL_METADATA.find(c => c.id === targetPlatform)?.name || targetPlatform
       });
 
-      setEditRepurposedCopy(adaptedContent);
+      setEditRepurposedCopy(aiContent || adaptedContent);
       setIsRepurposing(false);
-    }, 1200);
+    }
   };
 
   const handleCopyRepurposed = () => {

@@ -13,6 +13,7 @@ import AuthModal from './components/AuthModal';
 import OnboardingFlow from './components/OnboardingFlow';
 import DashboardWorkspace from './components/DashboardWorkspace';
 import LegalModal from './components/LegalModal';
+import BackToTop from './components/BackToTop';
 
 export default function App() {
   const { 
@@ -166,6 +167,9 @@ export default function App() {
 
       {/* Footer layer */}
       <Footer onOpenLogin={openLogin} onOpenSignup={openSignup} onOpenLegal={handleOpenLegal} />
+
+      {/* Back to top */}
+      <BackToTop />
 
       {/* Interactive Modal layer */}
       <TrialModal 

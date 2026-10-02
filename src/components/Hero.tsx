@@ -33,7 +33,7 @@ export default function Hero({ onOpenTrial, onScrollToDemo }: HeroProps) {
         </h1>
 
         {/* Clear Subheadline in non-technical simple language */}
-        <p className="text-sm sm:text-base md:text-lg text-[#888888] max-w-3xl mx-auto mb-10 leading-relaxed font-normal">
+        <p className="text-sm sm:text-base md:text-lg text-[#9BA3AF] max-w-3xl mx-auto mb-10 leading-relaxed font-normal">
           Stop posting the exact same content everywhere. <strong className="text-[#C9A84C] font-semibold">Synapse Sync</strong> is your dedicated AI co-pilot that actively formats, engineers, and optimizes your core insights into specific, high-reach posts customized for the specific algorithms of <strong className="text-[#F7F3EC]">LinkedIn, X, video descriptions,</strong> and <strong className="text-[#F7F3EC]">email newsletters</strong>—all in one place.
         </p>
 
@@ -65,10 +65,10 @@ export default function Hero({ onOpenTrial, onScrollToDemo }: HeroProps) {
             <span className="font-display font-black text-5xl md:text-6xl text-[#C9A84C] tracking-tight block mb-2">
               4.2x
             </span>
-            <span className="text-[11px] uppercase tracking-wider text-[#888888] mt-1 font-bold block mb-2">
+            <span className="text-[11px] uppercase tracking-wider text-[#9BA3AF] mt-1 font-bold block mb-2">
               Avg. Reach Growth
             </span>
-            <span className="text-[#888888] text-xs md:text-sm font-normal max-w-[240px] mx-auto">
+            <span className="text-[#9BA3AF] text-xs md:text-sm font-normal max-w-[240px] mx-auto">
               Average lift in organic engagement compared to manual raw cross-posting.
             </span>
           </div>
@@ -77,10 +77,10 @@ export default function Hero({ onOpenTrial, onScrollToDemo }: HeroProps) {
             <span className="font-display font-black text-5xl md:text-6xl text-[#F7F3EC] tracking-tight block mb-2">
               12hrs
             </span>
-            <span className="text-[11px] uppercase tracking-wider text-[#888888] mt-1 font-bold block mb-2">
+            <span className="text-[11px] uppercase tracking-wider text-[#9BA3AF] mt-1 font-bold block mb-2">
               Saved Per Week
             </span>
-            <span className="text-[#888888] text-xs md:text-sm font-normal max-w-[240px] mx-auto">
+            <span className="text-[#9BA3AF] text-xs md:text-sm font-normal max-w-[240px] mx-auto">
               Weekly hours saved per client workspace by eliminating manual rewrite cycles.
             </span>
           </div>
@@ -89,10 +89,10 @@ export default function Hero({ onOpenTrial, onScrollToDemo }: HeroProps) {
             <span className="font-display font-black text-5xl md:text-6xl text-[#C9A84C] tracking-tight block mb-2">
               89%
             </span>
-            <span className="text-[11px] uppercase tracking-wider text-[#888888] mt-1 font-bold block mb-2">
+            <span className="text-[11px] uppercase tracking-wider text-[#9BA3AF] mt-1 font-bold block mb-2">
               Higher Engagement
             </span>
-            <span className="text-[#888888] text-xs md:text-sm font-normal max-w-[240px] mx-auto">
+            <span className="text-[#9BA3AF] text-xs md:text-sm font-normal max-w-[240px] mx-auto">
               Increase in outbound referral traffic driven by algorithmic hook variations.
             </span>
           </div>

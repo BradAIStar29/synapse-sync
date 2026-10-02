@@ -136,13 +136,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     setIsConnecting(id);
-    setConnectionLogs('Resolving OAuth endpoints ...');
+    setConnectionLogs('Opening a secure connection...');
     
     // Simulate animated API handshake
     setTimeout(() => {
-      setConnectionLogs('Exchanging token credentials via TLS ...');
+      setConnectionLogs('Verifying your account credentials...');
       setTimeout(() => {
-        setConnectionLogs('Syncing platform templates & metadata ...');
+        setConnectionLogs('Syncing your channel settings...');
         setTimeout(() => {
           connectPlatform(id);
           setIsConnecting(null);
@@ -242,7 +242,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <div className="mb-6 p-4 bg-[#0d1522] border border-[#C9A84C]/30 rounded-xl flex items-center gap-3.5 animate-pulse text-[#C9A84C] font-mono text-xs">
                 <Loader2 className="w-5 h-5 animate-spin shrink-0 text-[#C9A84C]" />
                 <div>
-                  <span className="block font-bold">SYNLINK SECURE PROTOCOL ACTIVE</span>
+                  <span className="block font-bold">Connecting securely...</span>
                   <span className="text-[10px] text-[#888888]">{connectionLogs}</span>
                 </div>
               </div>

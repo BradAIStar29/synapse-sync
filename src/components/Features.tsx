@@ -61,7 +61,7 @@ export default function Features() {
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight">
             Designed for those who value data-driven results—not dumb calendars.
           </h2>
-          <p className="text-[#888888] mt-5 text-sm sm:text-base max-w-2xl font-normal leading-relaxed">
+          <p className="text-[#9BA3AF] mt-5 text-sm sm:text-base max-w-2xl font-normal leading-relaxed">
             Anyone can schedule a post. Synapse Sync is built for professional growth teams who need their multi-channel distribution stream to actively pull attention, earn leads, and drive business value.
           </p>
         </div>
@@ -90,7 +90,7 @@ export default function Features() {
                   {item.title}
                 </h3>
                 
-                <p className="text-[#888888] text-sm leading-relaxed mb-6 font-normal">
+                <p className="text-[#9BA3AF] text-sm leading-relaxed mb-6 font-normal">
                   {item.description}
                 </p>
               </div>
@@ -107,7 +107,7 @@ export default function Features() {
                 {/* Highlights checklists */}
                 <div className="space-y-2">
                   {item.highlights.map((hlt, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-[#888888]">
+                    <div key={idx} className="flex items-center gap-2 text-xs text-[#9BA3AF]">
                       <CheckCircle2 className="w-3.5 h-3.5 text-[#C9A84C]/70 shrink-0" />
                       <span>{hlt}</span>
                     </div>

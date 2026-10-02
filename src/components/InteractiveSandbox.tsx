@@ -16,6 +16,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { PRELOADED_DRAFTS, CHANNEL_METADATA, generatePlatformOptimization } from '../templates';
+import { generateWithAI } from '../api';
 import { ChannelOptimizationMap } from '../types';
 
 export default function InteractiveSandbox({ onOpenTrial }: { onOpenTrial?: (plan?: string) => void }) {
@@ -27,6 +28,7 @@ export default function InteractiveSandbox({ onOpenTrial }: { onOpenTrial?: (pla
   const [optimizedOutputs, setOptimizedOutputs] = useState<ChannelOptimizationMap | null>(null);
   const [copiedStates, setCopiedStates] = useState<{ [key: string]: boolean }>({});
   const [activeTab, setActiveTab] = useState<string>('linkedin');
+  const [isLiveAI, setIsLiveAI] = useState<boolean>(false);
 
   // Templates handler
   const handleTemplateSelect = (id: string) => {
@@ -46,55 +48,84 @@ export default function InteractiveSandbox({ onOpenTrial }: { onOpenTrial?: (pla
   };
 
   const toggleChannel = (id: string) => {
+    let next: string[];
     if (selectedChannels.includes(id)) {
       if (selectedChannels.length > 1) {
-        setSelectedChannels(selectedChannels.filter(c => c !== id));
+        next = selectedChannels.filter(c => c !== id);
+      } else {
+        return; // always keep at least one channel selected
       }
     } else {
-      setSelectedChannels([...selectedChannels, id]);
+      next = [...selectedChannels, id];
+    }
+    setSelectedChannels(next);
+    // Keep the visible tab valid after removal
+    if (activeTab === id && !next.includes(id) && next.length > 0) {
+      setActiveTab(next[0]);
     }
     setOptimizedOutputs(null);
   };
 
-  // Run simulated optimization
-  const runOptimization = () => {
-    if (!customText.trim()) return;
+  // Run optimization: real server AI first, local templates as fallback
+  const runOptimization = async () => {
+    if (!customText.trim() || isProcessing) return;
     setIsProcessing(true);
     setOptimizedOutputs(null);
+    setIsLiveAI(false);
 
     const steps = [
-      "Deconstructing raw input semantics...",
-      "Extracting core hook proposals & taglines...",
-      "Analyzing tone contours & readability scales...",
-      "Mapping brand parameters for selected ecosystems...",
-      "Injecting algorithm-compliant formatting rules...",
-      "Compiling tailored multi-platform copy boards..."
+      "Reading your idea...",
+      "Crafting hooks for each platform...",
+      "Tuning tone and readability...",
+      "Formatting final copy..."
     ];
 
     let currentStepIndex = 0;
     setProcessingStep(steps[currentStepIndex]);
+    const stepper = setInterval(() => {
+      currentStepIndex = (currentStepIndex + 1) % steps.length;
+      setProcessingStep(steps[currentStepIndex]);
+    }, 700);
 
-    const interval = setInterval(() => {
-      currentStepIndex++;
-      if (currentStepIndex < steps.length) {
-        setProcessingStep(steps[currentStepIndex]);
-      } else {
-        clearInterval(interval);
-        
-        // Build actual outputs
-        const results: ChannelOptimizationMap = {};
-        selectedChannels.forEach(chan => {
-          results[chan] = generatePlatformOptimization(customText, chan);
-        });
+    try {
+      // Ask the server AI for every selected channel in parallel
+      const aiResults = await Promise.all(
+        selectedChannels.map(async (chan) => {
+          const res = await generateWithAI(customText, chan, 'growth');
+          return { chan, ok: res.ok && !!res.data.content, content: res.data.content as string };
+        })
+      );
 
-        setOptimizedOutputs(results);
-        setIsProcessing(false);
-        // Default to first active tab
-        if (selectedChannels.length > 0) {
-          setActiveTab(selectedChannels[0]);
+      const results: ChannelOptimizationMap = {};
+      let anyLive = false;
+      selectedChannels.forEach((chan, i) => {
+        // Base metadata (scores, tips, hashtags) always comes from the local engine
+        const base = generatePlatformOptimization(customText, chan);
+        const ai = aiResults[i];
+        if (ai && ai.ok && ai.content) {
+          anyLive = true;
+          results[chan] = { ...base, content: ai.content };
+        } else {
+          results[chan] = base;
         }
+      });
+
+      setIsLiveAI(anyLive);
+      setOptimizedOutputs(results);
+    } catch {
+      // Total failure — pure local simulation
+      const results: ChannelOptimizationMap = {};
+      selectedChannels.forEach(chan => {
+        results[chan] = generatePlatformOptimization(customText, chan);
+      });
+      setOptimizedOutputs(results);
+    } finally {
+      clearInterval(stepper);
+      setIsProcessing(false);
+      if (selectedChannels.length > 0) {
+        setActiveTab(selectedChannels[0]);
       }
-    }, 400);
+    }
   };
 
   const copyToClipboard = (text: string, channelId: string) => {
@@ -276,9 +307,9 @@ export default function InteractiveSandbox({ onOpenTrial }: { onOpenTrial?: (pla
                 <div className="p-4 rounded-full bg-[#444444]/20 text-[#C9A84C]/65 border border-[#444444]/60 mb-6 animate-pulse">
                   <Sparkles className="w-8 h-8" />
                 </div>
-                <h3 className="font-display font-bold text-lg text-white mb-2">Engage the Synapse Core</h3>
+                <h3 className="font-display font-bold text-lg text-white mb-2">See it in action</h3>
                 <p className="text-sm text-[#888888] max-w-sm leading-relaxed">
-                  Click 'Sync & Optimize with AI Co-Pilot' on the left to watch how your thoughts get customized into a full omni-channel optimized masterboard.
+                  Pick a sample idea (or type your own), choose your channels, and hit 'Sync & Optimize' to watch one idea become polished posts for every platform.
                 </p>
               </div>
             )}
@@ -296,7 +327,7 @@ export default function InteractiveSandbox({ onOpenTrial }: { onOpenTrial?: (pla
                   </div>
                 </div>
 
-                <h4 className="font-display font-semibold text-white text-base mb-2">Analyzing Platform Parameters</h4>
+                <h4 className="font-display font-semibold text-white text-base mb-2">Generating your posts</h4>
                 <div className="h-6 overflow-hidden max-w-xs text-center">
                   <p className="text-xs text-[#C9A84C] font-mono animate-pulse">
                     {processingStep}
@@ -325,6 +356,14 @@ export default function InteractiveSandbox({ onOpenTrial }: { onOpenTrial?: (pla
             {optimizedOutputs && (
               <div id="sandbox-outputs-container" className="flex-grow bg-[#444444]/15 rounded-3xl border border-[#444444]/85 p-6 flex flex-col shadow-2xl relative backdrop-blur-xl min-h-[580px]">
                 
+                {/* Live AI indicator */}
+                {isLiveAI && (
+                  <div className="absolute top-4 right-6 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/30 text-[#C9A84C] text-[10px] font-bold uppercase tracking-widest font-mono">
+                    <Sparkles className="w-3 h-3" />
+                    Live AI
+                  </div>
+                )}
+
                 {/* Horizontal Channels Select Tabs */}
                 <div className="flex flex-wrap items-center gap-2 border-b border-[#444444]/60 pb-4 mb-6">
                   {selectedChannels.map(chanId => {
