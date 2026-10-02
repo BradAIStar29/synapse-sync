@@ -41,6 +41,13 @@ Guidelines:
 - Never invent facts about BMAIProductions beyond: it is a digital asset lab; it has a sister site NOVA (AI avatar/content persona); there is a free starter pack for email subscribers.
 - Never mention or claim to be affiliated with any company other than BMAIProductions.`;
 
+// Per-site context so the consultant tailors answers and links to where the visitor is
+const SITE_CONTEXT: Record<string, string> = {
+  main: "The visitor is on the main BMAIProductions site (bmaiproductions.pages.dev). When helpful, point them to the AI Asset Blueprint Generator section on this page and the free Digital Asset Starter Pack for email subscribers.",
+  nova: "The visitor is on the NOVA site (bmai-nova.pages.dev) — NOVA is BMAI's AI-powered asset builder with a fast 'Turn Idea → Asset' generator on this page. When helpful, suggest they try it right here.",
+  founder: "The visitor is on the BMAI Founder site (bmai-founder.pages.dev) — a behind-the-scenes look at the founder and the portfolio. When helpful, point them to the main site (bmaiproductions.pages.dev) for tools and NOVA (bmai-nova.pages.dev) for AI asset building.",
+};
+
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 
 export class BmaiConsultantAgent extends Agent<Env, ConsultantState> {
@@ -71,6 +78,8 @@ export class BmaiConsultantAgent extends Agent<Env, ConsultantState> {
     const message = (body?.message || "").toString().trim().slice(0, 4000);
     if (!message) return Response.json({ error: "A message is required" }, { status: 400 });
 
+    const site = ["main", "nova", "founder"].includes(body?.site) ? body.site : "main";
+
     if (!this.env.AI) {
       return Response.json({ error: "AI is not enabled on this worker", isFallback: true }, { status: 503 });
     }
@@ -80,7 +89,7 @@ export class BmaiConsultantAgent extends Agent<Env, ConsultantState> {
 
     // 2. Generate a reply with the model chain
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: SYSTEM_PROMPT + "\n\n" + (SITE_CONTEXT[site] || "") },
       ...history.slice(-MAX_HISTORY).map((m) => ({ role: m.role, content: m.content })),
     ];
 
@@ -121,7 +130,7 @@ export class BmaiConsultantAgent extends Agent<Env, ConsultantState> {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email,
-              source: "BMAI AI Consultant Chat",
+              source: "BMAI AI Consultant (" + site + " site)",
               tags: ["synapse-sync", "website-lead", "ai-chat-lead"],
             }),
           });
