@@ -325,6 +325,20 @@ app.post("/api/collect-email", async (c) => {
   }
 });
 
+// DELETE /api/leads — clear all leads (requires X-Admin-Key header)
+app.delete("/api/leads", async (c) => {
+  const adminKey = c.env.LEAD_ADMIN_KEY;
+  const provided = c.req.header("X-Admin-Key") || c.req.query("key");
+  if (!adminKey || provided !== adminKey) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const vaultId = c.env.LeadVault.idFromName("global");
+  const vault = c.env.LeadVault.get(vaultId);
+  const res = await vault.fetch("https://lead-vault/clear?key=" + encodeURIComponent(provided || ""), { method: "DELETE" });
+  const data = await res.json().catch(() => ({ error: "Failed to clear leads" }));
+  return c.json(data, res.status as any);
+});
+
 // GET /api/leads — export captured leads (requires X-Admin-Key header)
 app.get("/api/leads", async (c) => {
   const adminKey = c.env.LEAD_ADMIN_KEY;
