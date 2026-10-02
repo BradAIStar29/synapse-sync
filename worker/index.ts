@@ -322,8 +322,13 @@ app.post("/api/collect-email", async (c) => {
     const ghlData: any = await ghlResponse.json().catch(() => ({}));
 
     if (!ghlResponse.ok) {
-      console.error("Captivation Hub error:", JSON.stringify(ghlData));
-      return c.json({ error: "Failed to save contact", details: ghlData?.message || "Unknown error" }, 500);
+      console.error("Captivation Hub error:", ghlResponse.status, JSON.stringify(ghlData));
+      return c.json({
+        error: "Failed to save contact",
+        details: ghlData?.message || "Unknown error",
+        ghlStatus: ghlResponse.status,
+        ghlBody: JSON.stringify(ghlData).slice(0, 300),
+      }, 500);
     }
 
     return c.json({ success: true, contactId: ghlData?.contact?.id || null, message: "Email collected successfully" });
