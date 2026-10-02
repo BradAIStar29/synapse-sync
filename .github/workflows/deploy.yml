@@ -35,6 +35,10 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist/public --project-name=bmai-synapse-sync
 
+      - name: Install worker dependencies
+        run: npm ci
+        working-directory: worker
+
       - name: Deploy Cloudflare Worker (API backend)
         uses: cloudflare/wrangler-action@v3
         with:
