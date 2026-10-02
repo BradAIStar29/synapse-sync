@@ -334,13 +334,13 @@ app.post("/api/ai/blueprint", async (c) => {
       // complete key/value pair individually with a regex that only
       // matches properly closed JSON strings.
       for (const k of keys) {
-        const m = cleaned.match(new RegExp(`"${k}"\s*:\s*("(?:[^"\\]|\\.)*")`));
-        if (m) {
-          try {
+        try {
+          const m = cleaned.match(new RegExp('"' + k + '"\\s*:\\s*("(?:[^"\\\\]|\\\\.)*")'));
+          if (m) {
             const val = JSON.parse(m[1]);
             if (typeof val === "string" && val.trim()) candidate[k] = val.trim();
-          } catch { /* skip this key */ }
-        }
+          }
+        } catch { /* skip this key */ }
       }
     }
 
