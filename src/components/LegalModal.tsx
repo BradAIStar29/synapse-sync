@@ -1,4 +1,4 @@
-import { X, Shield, Scale, ScrollText, Check } from 'lucide-react';
+import { X, Shield, Scale, ScrollText, Check, Sparkles } from 'lucide-react';
 
 interface LegalModalProps {
   isOpen: boolean;
@@ -101,15 +101,55 @@ export default function LegalModal({ isOpen, onClose, initialTab = 'terms' }: Le
             </div>
           </div>
 
+          {/* Section 3: AI Policy */}
+          <div className="space-y-4">
+            <h4 className="font-display font-bold text-sm text-[#F7F3EC] flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#C9A84C]" />
+              3. AI POLICY &amp; GOVERNANCE
+            </h4>
+
+            <p>
+              Synapse Sync uses large language models to adapt and repurpose your content. We govern that AI deliberately, and this is our public commitment:
+            </p>
+
+            <div className="space-y-3 pl-2.5 border-l border-[#C9A84C]/30">
+              <h5 className="font-bold text-white text-[11px] uppercase tracking-wider">A. Named Owner</h5>
+              <p>
+                Every AI feature is owned and reviewed by one accountable person: Bradley Matican. If an AI feature misbehaves, a human is responsible for fixing it.
+              </p>
+
+              <h5 className="font-bold text-white text-[11px] uppercase tracking-wider">B. Least Privilege</h5>
+              <p>
+                Our AI drafts content. It cannot send email, make purchases, access unrelated accounts, or take actions you did not configure. Every channel action requires your setup and review.
+              </p>
+
+              <h5 className="font-bold text-white text-[11px] uppercase tracking-wider">C. Human Gate on Irreversible Actions</h5>
+              <p>
+                AI output is a draft for you to review. Nothing AI-generated is published or distributed to your channels without your explicit review and scheduling. AI output is not legal, financial, medical, or professional advice — verify facts before publishing.
+              </p>
+
+              <h5 className="font-bold text-white text-[11px] uppercase tracking-wider">D. Known, Audited Model Vendor</h5>
+              <p>
+                All AI processing runs on Cloudflare Workers AI under Cloudflare's terms of service and data processing commitments. No unknown or unaudited model providers receive your content.
+              </p>
+
+              <h5 className="font-bold text-white text-[11px] uppercase tracking-wider">E. Your Ownership of Output</h5>
+              <p>
+                You retain complete ownership of your input drafts and all AI-adapted output. Synapse Sync claims no rights over content created through the co-pilot.
+              </p>
+            </div>
+          </div>
+
           {/* Compliance list */}
           <div className="bg-[#444444]/15 border border-[#444444] rounded-2xl p-4 space-y-2 mt-4">
             <h5 className="text-[#C9A84C] font-mono uppercase font-bold text-[10px] tracking-widest flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5" /> Guarantee Verified Compliance
             </h5>
             <ul className="space-y-1.5 text-[11px] text-white/80 font-medium font-sans">
-              <li>✓ GDPR & CCPA Data Deletion Rights Authorized</li>
-              <li>✓ PCI-DSS Level 1 Gateway Verification Process</li>
-              <li>✓ SOC 2 Type II Encrypted Token Session Buffers</li>
+              <li>✓ Your data deleted on request — just ask</li>
+              <li>✓ We never sell your personal information</li>
+              <li>✓ Human review gates on all AI output and publishing</li>
+              <li>✓ All processing on Cloudflare infrastructure</li>
             </ul>
           </div>
 
